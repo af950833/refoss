@@ -402,7 +402,10 @@ class RefossSensor(RefossEntity, SensorEntity):
         stored_value = RefossSensor._cached_energy_data.get(str(self.channel_id), 0)
         # ✅ 일사용량 계산
         previous_day_value = RefossSensor._cached_daily_energy_data.get(str(self.channel_id), value)
-        daily_usage = max(0, value - previous_day_value)   # ✅ 현재값 - 어제값
+        if value - previous_day_value < 0:
+            daily_usage = value
+        else:
+            daily_usage = value - previous_day_value
 
         if self.entity_description.translation_key == "this_day_energy":
             return self.entity_description.fn(daily_usage)  # ✅ 일사용량 센서일 경우
