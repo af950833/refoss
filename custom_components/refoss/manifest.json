@@ -1,0 +1,11 @@
+{
+  "domain": "refoss",
+  "name": "Refoss",
+  "codeowners": ["@ashionky","@af950833"],
+  "version": "1.5.0",
+  "config_flow": true,
+  "documentation": "https://github.com/af950833/refoss",
+  "iot_class": "local_polling",
+  "requirements": ["refoss-ha==1.2.5"],
+  "single_config_entry": true
+}
