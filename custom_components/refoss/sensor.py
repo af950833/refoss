@@ -313,6 +313,7 @@ class RefossSensor(RefossEntity, SensorEntity):
     entity_description: RefossSensorEntityDescription
     _cached_energy_data = {}
     _cached_daily_energy_data = {}
+    _observer = None
     
     def __init__(
         self,
@@ -386,13 +387,16 @@ class RefossSensor(RefossEntity, SensorEntity):
             RefossSensor._cached_daily_energy_data = {str(channel): 0 for channel in self.coordinator.device.channels}
 
     def start_watching_file(self):
-        """Start watching the energy JSON files for changes."""
+        """Start watching the energy JSON files for changes (only once)."""
+        if RefossSensor._observer is not None:
+            return  # ✅ 이미 감시 중이면 실행하지 않음
+            
         file_paths = [self.monthly_energy_file_path, self.daily_energy_file_path]
         event_handler = EnergyFileWatcher(self, file_paths)
-        observer = Observer()
-        # ✅ 두 개의 파일이 같은 디렉토리에 있으므로 한 번만 감시하면 됨
-        observer.schedule(event_handler, os.path.dirname(self.monthly_energy_file_path), recursive=False)
-        observer.start()
+        
+        RefossSensor._observer = Observer()
+        RefossSensor._observer.schedule(event_handler, os.path.dirname(self.monthly_energy_file_path), recursive=False)
+        RefossSensor._observer.start()
         _LOGGER.info("Started watching files: %s", file_paths)
 
     @property
@@ -402,10 +406,7 @@ class RefossSensor(RefossEntity, SensorEntity):
         stored_value = RefossSensor._cached_energy_data.get(str(self.channel_id), 0)
         # ✅ 일사용량 계산
         previous_day_value = RefossSensor._cached_daily_energy_data.get(str(self.channel_id), value)
-        if value - previous_day_value < 0:
-            daily_usage = value
-        else:
-            daily_usage = value - previous_day_value
+        daily_usage = value if value - previous_day_value < 0 else value - previous_day_value
 
         if self.entity_description.translation_key == "this_day_energy":
             return self.entity_description.fn(daily_usage)  # ✅ 일사용량 센서일 경우
