@@ -155,7 +155,7 @@ async def async_setup_entry(
             except IOError as e:
                 _LOGGER.error("Failed to save monthly energy data: %s", e)
                 
-        await asyncio.sleep(2)  # ✅ 실행 후 2초 대기 (중복 실행 방지)
+        await asyncio.sleep(3)  # ✅ 실행 후 3초 대기 (중복 실행 방지)
         schedule_user_reset()
 
     async def save_device_reset(_):
@@ -184,7 +184,7 @@ async def async_setup_entry(
             except IOError as e:
                 _LOGGER.error("Failed to save adjusted energy data: %s", e)
 
-        await asyncio.sleep(2)  # ✅ 실행 후 2초 대기 (중복 실행 방지)
+        await asyncio.sleep(3)  # ✅ 실행 후 3초 대기 (중복 실행 방지)
         schedule_device_reset()
 
     async def save_daily_energy(_):
@@ -220,7 +220,7 @@ async def async_setup_entry(
             except IOError as e:
                 _LOGGER.error("Failed to update daily energy file: %s", e)
     
-        await asyncio.sleep(2)
+        await asyncio.sleep(3)  # ✅ 실행 후 3초 대기 (중복 실행 방지)
         schedule_daily_energy_save()
     
     def schedule_user_reset():
@@ -241,6 +241,8 @@ async def async_setup_entry(
 
         if now > target_time:
             target_time = target_time.replace(month=(now.month % 12) + 1, year=now.year + (1 if now.month == 12 else 0))
+            
+        target_time = target_time - datetime.timedelta(seconds=1)
 
         _LOGGER.info("Next adjusted energy data save scheduled at: %s", target_time)
         async_track_point_in_time(hass, save_device_reset, target_time)
