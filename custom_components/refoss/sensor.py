@@ -189,6 +189,7 @@ async def async_setup_entry(
 
     async def save_daily_energy(_):
         """Save daily energy consumption at midnight and update daily usage."""
+        now = datetime.datetime.now()  #아래 user_reset_day 비교 때문에 필요
         for coordinator in hass.data[DOMAIN][COORDINATORS]:
             device = coordinator.device
             if not isinstance(device, ElectricityXMix):
