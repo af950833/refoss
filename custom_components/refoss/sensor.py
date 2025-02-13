@@ -145,8 +145,8 @@ async def async_setup_entry(
 
             energy_data = {}
             for channel in device.channels:
-                energy_value = device.get_value(channel, "mConsume")
-                energy_data[channel] = (-1 * energy_value) if energy_value is not None else 0  # ✅ -1 곱해서 저장
+                device_value = device.get_value(channel, "mConsume") or 0
+                energy_data[channel] = (-1 * device_value) if device_value is not None else 0  # ✅ -1 곱해서 저장
 
             try:
                 with open(file_path, "w", encoding="utf-8") as file:
@@ -172,7 +172,7 @@ async def async_setup_entry(
             for channel in device.channels:
                 # ✅ 센서 값 (기기 값 + 기존 파일 값) 저장
                 device_value = device.get_value(channel, "mConsume") or 0
-                stored_value = RefossSensor._cached_energy_data.get(str(channel), 0)
+                stored_value = RefossSensor._cached_monthly_energy_data.get(str(channel), 0)
                 adjusted_value = device_value + stored_value  # ✅ 센서 값으로 저장
 
                 energy_data[channel] = adjusted_value
@@ -201,9 +201,16 @@ async def async_setup_entry(
     
             # ✅ 현재 센서 값을 가져와서 저장
             for channel in device.channels:
-                current_value = device.get_value(channel, "mConsume") or 0
-                daily_energy_data[channel] = current_value  # ✅ 현재 센서 값을 저장
-                RefossSensor._cached_daily_energy_data[str(channel)] = current_value  # ✅ 캐시 업데이트
+                device_value = device.get_value(channel, "mConsume") or 0 #기기값
+                stored_value = RefossSensor._cached_monthly_energy_data.get(str(channel), 0) #월저장 파일값
+                adjusted_value = device_value + stored_value  # ✅ 월사용량(기기+파일)
+                
+                if now.day == user_reset_day:
+                    daily_energy_data[channel] = 0
+                else:
+                    daily_energy_data[channel] = adjusted_value
+                    
+                RefossSensor._cached_daily_energy_data[str(channel)] = adjusted_value  # ✅ 캐시 업데이트
                 
             # ✅ 기존 파일 업데이트
             try:
@@ -311,7 +318,7 @@ class RefossSensor(RefossEntity, SensorEntity):
     """Refoss Sensor Device."""
 
     entity_description: RefossSensorEntityDescription
-    _cached_energy_data = {}
+    _cached_monthly_energy_data = {}
     _cached_daily_energy_data = {}
     _observer = None
     
@@ -348,7 +355,7 @@ class RefossSensor(RefossEntity, SensorEntity):
                     default_data = {}
                     for channel in self.coordinator.device.channels:
                         device_value = self.coordinator.device.get_value(channel, "mConsume") or 0
-                        stored_value = RefossSensor._cached_energy_data.get(str(channel), 0)  # ✅ 월사용량 값 가져오기
+                        stored_value = RefossSensor._cached_monthly_energy_data.get(str(channel), 0)  # ✅ 월사용량 값 가져오기
                         default_data[str(channel)] = device_value + stored_value  # ✅ 기기값 + 월사용량 값 저장
                 else:
                     # ✅ 모든 채널 값을 0으로 설정 (monthly_energy.json)
@@ -369,12 +376,12 @@ class RefossSensor(RefossEntity, SensorEntity):
         """Load stored energy data from JSON file."""
         try:
             with open(self.monthly_energy_file_path, "r", encoding="utf-8") as file:
-                RefossSensor._cached_energy_data = json.load(file)
+                RefossSensor._cached_monthly_energy_data = json.load(file)
             _LOGGER.info("Loaded stored energy data from %s", self.monthly_energy_file_path)
         except (IOError, json.JSONDecodeError):
             _LOGGER.error("Failed to read energy data file. Using default values.")
             # ✅ JSON 파일이 없거나 손상된 경우, 현재 기기의 채널 개수를 기반으로 기본값 설정
-            RefossSensor._cached_energy_data = {str(channel): 0 for channel in self.coordinator.device.channels}
+            RefossSensor._cached_monthly_energy_data = {str(channel): 0 for channel in self.coordinator.device.channels}
 
     def load_daily_energy_data(self):
         """Load stored daily energy data from JSON file into cache."""
@@ -402,15 +409,14 @@ class RefossSensor(RefossEntity, SensorEntity):
     @property
     def native_value(self) -> StateType:
         """Return the native value including stored energy data."""
-        value = self.coordinator.device.get_value(self.channel_id, self.entity_description.subkey) or 0
-        previous_day_value = RefossSensor._cached_daily_energy_data.get(str(self.channel_id), value)
-        daily_usage = value if value - previous_day_value < 0 else value - previous_day_value
+        device_value = self.coordinator.device.get_value(self.channel_id, self.entity_description.subkey) or 0 #기기값
+        daily_stored_value = RefossSensor._cached_daily_energy_data.get(str(self.channel_id), 0) #일저장 파일값
+        monthly_stored_value = RefossSensor._cached_monthly_energy_data.get(str(self.channel_id), 0) #월저장 파일값
     
         if self.entity_description.translation_key == "this_day_energy":
-            return self.entity_description.fn(daily_usage)  # ✅ 일사용량 센서 (실시간 값만 사용)
+            return self.entity_description.fn(device_value + monthly_stored_value - daily_stored_value)  # ✅ 일사용량 센서
     
         if self.entity_description.translation_key == "this_month_energy":
-            stored_value = RefossSensor._cached_energy_data.get(str(self.channel_id), 0)
-            return self.entity_description.fn(value + stored_value)  # ✅ 월사용량만 저장된 값 포함
+            return self.entity_description.fn(device_value + monthly_stored_value)  # ✅ 월사용량 센서
     
-        return self.entity_description.fn(value)  # ✅ 나머지 센서는 실시간 값만 반환
+        return self.entity_description.fn(device_value)  # ✅ 나머지 센서는 실시간 값만 반환
