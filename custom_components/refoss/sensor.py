@@ -403,12 +403,14 @@ class RefossSensor(RefossEntity, SensorEntity):
     def native_value(self) -> StateType:
         """Return the native value including stored energy data."""
         value = self.coordinator.device.get_value(self.channel_id, self.entity_description.subkey) or 0
-        stored_value = RefossSensor._cached_energy_data.get(str(self.channel_id), 0)
-        # ✅ 일사용량 계산
         previous_day_value = RefossSensor._cached_daily_energy_data.get(str(self.channel_id), value)
         daily_usage = value if value - previous_day_value < 0 else value - previous_day_value
-
+    
         if self.entity_description.translation_key == "this_day_energy":
-            return self.entity_description.fn(daily_usage)  # ✅ 일사용량 센서일 경우
-            
-        return self.entity_description.fn(value + stored_value)
+            return self.entity_description.fn(daily_usage)  # ✅ 일사용량 센서 (실시간 값만 사용)
+    
+        if self.entity_description.translation_key == "this_month_energy":
+            stored_value = RefossSensor._cached_energy_data.get(str(self.channel_id), 0)
+            return self.entity_description.fn(value + stored_value)  # ✅ 월사용량만 저장된 값 포함
+    
+        return self.entity_description.fn(value)  # ✅ 나머지 센서는 실시간 값만 반환
