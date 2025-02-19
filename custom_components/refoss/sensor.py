@@ -249,9 +249,9 @@ async def async_setup_entry(
         async_track_point_in_time(hass, save_device_reset, target_time)
 
     def schedule_daily_energy_save():
-        """Schedule daily energy saving at 00:00:00."""
+        """Schedule daily energy saving at 00:00:01."""
         now = datetime.datetime.now()
-        target_time = now.replace(hour=0, minute=0, second=0)
+        target_time = now.replace(hour=0, minute=0, second=1)
     
         if now > target_time:
             target_time = target_time + datetime.timedelta(days=1)
