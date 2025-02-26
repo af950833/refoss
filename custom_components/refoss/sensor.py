@@ -141,7 +141,7 @@ async def async_setup_entry(
                 continue
 
             device_name = device.dev_name
-            file_path = f"/config/{device_name}_monthly_energy.json"
+            file_path = f"/config/.storage/{device_name}_monthly_energy.json"
 
             energy_data = {}
             for channel in device.channels:
@@ -166,7 +166,7 @@ async def async_setup_entry(
                 continue
 
             device_name = device.dev_name
-            file_path = f"/config/{device_name}_monthly_energy.json"
+            file_path = f"/config/.storage/{device_name}_monthly_energy.json"
 
             energy_data = {}
             for channel in device.channels:
@@ -196,7 +196,7 @@ async def async_setup_entry(
                 continue
     
             device_name = device.dev_name
-            file_path = f"/config/{device_name}_daily_energy.json"
+            file_path = f"/config/.storage/{device_name}_daily_energy.json"
     
             daily_energy_data = {}
     
@@ -339,8 +339,8 @@ class RefossSensor(RefossEntity, SensorEntity):
         self._attr_unique_id = f"{channel_alias}_{description.translation_key}"
         self._attr_name = f"{channel_alias}_{description.translation_key}"
 
-        self.monthly_energy_file_path = f"/config/{self.coordinator.device.dev_name}_monthly_energy.json"
-        self.daily_energy_file_path = f"/config/{self.coordinator.device.dev_name}_daily_energy.json"
+        self.monthly_energy_file_path = f"/config/.storage/{self.coordinator.device.dev_name}_monthly_energy.json"
+        self.daily_energy_file_path = f"/config/.storage/{self.coordinator.device.dev_name}_daily_energy.json"
         
         self.ensure_file_exists(self.monthly_energy_file_path, use_sensor_values=False)  # ✅ 0으로 저장 (monthly_energy.json)
         self.ensure_file_exists(self.daily_energy_file_path, use_sensor_values=True)  # ✅ 센서값 저장 (daily_energy.json)
