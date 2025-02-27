@@ -2,7 +2,7 @@
   "domain": "refoss",
   "name": "Refoss",
   "codeowners": ["@ashionky","@af950833"],
-  "version": "1.5.9",
+  "version": "1.6.0",
   "config_flow": true,
   "documentation": "https://github.com/af950833/refoss",
   "iot_class": "local_polling",
